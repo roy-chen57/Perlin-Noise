@@ -1,10 +1,10 @@
 #include <iostream>
+#include <fstream>
 #include <string>
+#include <vector>
 #include "lfsr.h"
 #include "prng.h"
-
-const int BITLENGTH = 8;
-
+#include "perlin.h"
 
 // raise the integer base to the power of the integer exp
 int pow(const int base, const int exp) {
@@ -40,7 +40,48 @@ void print_bin(int num, const int len) {
 
 
 int main(){
-	int seed = 0b10110101;
+	int seed = 0b11110001;
+	int bitlength = 8;
+	//std::cout << "shifting 8: " << (seed >> 7) << std::endl;
+
+	Lfsr rand = Lfsr(seed, bitlength);
+	Perlin noise = Perlin(seed, bitlength);
+
+
+	//std::cout << "(0.678431,5.89804): " << noise.generate(0.678431, 5.89804) << std::endl;
+	//std::cout << "(1,1): " << noise.generate(1,1) << std::endl;
+
+	std::ofstream ofile;
+	ofile.open("../height.csv");
+	
+
+	int grid_num = 10;
+	int grid_size = 5;
+	for (int n = 0; n < grid_num*grid_size; ++n) {
+		ofile << n << ',';
+	}
+	ofile << "\n";
+	
+	float x, y, res;
+	for (int j = 0; j < grid_num; ++j) {
+		for (int dy = 0; dy < grid_size; ++dy) {
+		ofile << j*3 + dy << ',';
+			for (int i = 0; i < grid_num; ++i) {
+			//x = i + (rand.generate() / 255.0);
+			//y = j + (rand.generate() / 255.0);
+				for (int dx = 0; dx < grid_size; ++dx) {
+					x = i + (1.0 * dx / grid_size) + 0.01;
+					y = j + (1.0 * dy / grid_size) + 0.01;
+					res = (noise.generate(x, y) + 1) / 2;
+					//std::cout << '(' << x << ',' << y << "): " << res << std::endl;
+					ofile << static_cast<int>(res * 255) << ',';
+				}
+			}
+			ofile << "\n";
+		}
+	}
+	ofile.close();
+	
 	/*
 	Prng* test = new Lfsr(seed); // access lfsr's functions
 	Lfsr rand = Lfsr(seed);
@@ -53,8 +94,8 @@ int main(){
 
 	delete test;
 	*/
-	
-	Lfsr rand = Lfsr(seed);
+	/*
+	Lfsr rand = Lfsr(seed, bitlength);
 	int number;
 
 	std::cout << "rand bitlength: " << rand.get_bitlength() << std::endl;
@@ -63,146 +104,18 @@ int main(){
 	number = rand.generate();
 	std::cout << number << std::endl;
 	std::cout << "Binary of number: ";
-	print_bin(number, 4);
+	print_bin(number, bitlength);
 	std::cout << std::endl;
-
-	int counts[16] = { 0 };
-	for (int i = 0; i < 100000; ++i) {
-		switch (rand.generate()) {
-			case 0:
-				counts[0]++;
-				break;
-			case 1:
-				counts[1]++;
-				break;
-			case 2:
-				counts[2]++;
-				break;
-			case 3:
-				counts[3]++;
-				break;
-			case 4:
-				counts[4]++;
-				break;
-			case 5:
-				counts[5]++;
-				break;
-			case 6:
-				counts[6]++;
-				break;
-			case 7:
-				counts[7]++;
-				break;
-			case 8:
-				counts[8]++;
-				break;
-			case 9:
-				counts[9]++;
-				break;
-			case 10:
-				counts[10]++;
-				break;
-			case 11:
-				counts[11]++;
-				break;
-			case 12:
-				counts[12]++;
-				break;
-			case 13:
-				counts[13]++;
-				break;
-			case 14:
-				counts[14]++;
-				break;
-			case 15:
-				counts[15]++;
-				break;
-		}
+	
+	int counts[256] = { 0 };
+	for (int i = 0; i < 255; ++i) {
+		number = rand.generate();
+		counts[number] += 1;
+		
 	}
 	
-	for (int i = 0; i < 16; ++i) {
+	for (int i = 0; i < 256; ++i) {
 		std::cout << i << ": " << counts[i] << std::endl;
-	}
-	/*
-	char input;
-	bool loop = true;
-	while (loop) {
-		try {
-			std::cin >> input;
-		}
-		catch (const std::exception& e) {
-			std::cout << e.what() << std::endl;
-			continue;
-		}
-
-		switch (input) {
-		case 'g':
-			std::cout << "generating number: ";
-			number = rand.generate();
-			std::cout << number << std::endl;
-			std::cout << "Binary of number: ";
-			print_bin(number, 4);
-			std::cout << std::endl;
-			break;
-		case 'q':
-			loop = false;
-			break;
-		case 's':
-			std::cout << "Current bitstring: ";
-			print_bin(rand.get_bitstr(), 8);
-			std::cout << std::endl;
-			break;
-		default:
-			std::cout << "Unknown Command" << std::endl;
-		}
-		
-
-		
-	}
-
-	bool mainloop = true;
-
-	//seed for 8 bit numbers
-	int b = 0b01010010;
-	int bitlength;
-	int state;
-	int feedback;
-
-	std::cout << "length of bit string: ";
-	std::cin >> bitlength;
-
-	int max = pow(2, bitlength) - 1;
-	
-	std::cout << "bitlength: " << bitlength << std::endl;
-
-	std::cout << "initial state\t\t" << b << "\t";
-	print_bin(b, bitlength);
-	std::cout << std::endl;
-	int four_bit[4] = { 0 };
-	int i = 0;
-
-	while (max > 0) {
-		state = b & 1; // last bit of b
-		b = b >> 1; // right shift b by one bit (discards last bit)
-		feedback = state ^ ((b >> 2) & 1);
-		b += (feedback << (bitlength - 1)); //add feedback bit to the leftmost position of b
-
-		std::cout << "(b:binary of b:state)\t" << b << "\t";
-		print_bin(b, bitlength);
-		std::cout << ":" << state << std::endl;
-
-		//std::cout << state;
-		four_bit[i] = state;
-		++i;
-		if (i == 4) { 
-			i = 0; 
-			std::cout << ((four_bit[0] << 3) + 
-						 (four_bit[1] << 2) + 
-						 (four_bit[2] << 1) + 
-						  four_bit[3]) << std::endl;
-		}
-		
-		--max;
 	}
 	*/
 }
